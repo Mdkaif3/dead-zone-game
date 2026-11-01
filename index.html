@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>DEAD ZONE — Pixel Survival</title>
+<style>
+:root{--bg:#080d0d;--panel:#111b1a;--line:#344744;--lime:#b7f36b;--red:#ff665b;--muted:#a9b9b2}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#1a2925,#080d0d 65%);color:#eaf4ed;font-family:system-ui,Arial;min-height:100vh;display:flex;justify-content:center}
+#app{width:min(100%,1000px);padding:12px;display:flex;flex-direction:column;gap:10px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);background:#101918;padding:10px 14px;border-radius:14px}
+.logo{font-weight:1000;letter-spacing:2px;font-size:clamp(18px,4vw,27px)}.logo span{color:var(--lime)}.sub{font-size:11px;color:var(--muted);letter-spacing:2px}
+#status{font-size:12px;color:var(--lime);text-align:right}
+.panel{background:#101918;border:1px solid var(--line);border-radius:14px;padding:12px}
+#lobby{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+input,button{font:inherit;border-radius:10px;border:1px solid #435a53;padding:12px;background:#0a1211;color:#eff8f1;min-width:0}
+button{font-weight:800;cursor:pointer;background:#21372d}button.primary{background:#b7f36b;color:#102015;border-color:#b7f36b}button:active{transform:scale(.98)}button:disabled{opacity:.45}
+.wide{grid-column:1/-1}.hint{font-size:12px;color:var(--muted);line-height:1.5}.stats{display:flex;justify-content:space-between;gap:8px;font-weight:800}.stats b{color:var(--lime)}
+#gamewrap{position:relative;border:2px solid #3b514a;border-radius:14px;overflow:hidden;background:#101916}
+canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#07100dcc;text-align:center;padding:20px}
+#overlay.hidden{display:none}.modal{max-width:360px;background:#13201c;border:1px solid #516b5c;border-radius:14px;padding:20px}.modal h2{color:var(--lime);margin:0 0 8px}
+#controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center}
+.pad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,48px);gap:5px;justify-content:center}
+.pad button{padding:0;font-size:20px;touch-action:none}
+#fire{height:96px;width:96px;border-radius:50%;justify-self:center;background:#6a3029;border:3px solid #bd6654;color:white;font-size:17px}
+#reload{background:#263b34}
+footer{font-size:11px;color:#84958d;text-align:center}
+@media(min-width:760px){#controls{max-width:500px;align-self:center;width:100%}.pad{grid-template-columns:repeat(3,62px);grid-template-rows:repeat(2,52px)}}
+</style>
+</head>
+<body><main id="app">
+<header><div><div class="logo">☣ DEAD <span>ZONE</span></div><div class="sub">PIXEL SURVIVAL // BUILD 02</div></div><div id="status">OFFLINE · READY</div></header>
+<section class="panel" id="lobby">
+<input id="playerName" maxlength="14" value="Survivor" aria-label="Player name" placeholder="Player name">
+<input id="roomCode" maxlength="8" placeholder="Room code">
+<button class="primary" id="create">CREATE ONLINE ROOM</button><button id="join">JOIN ROOM</button>
+<button id="solo" class="wide">PLAY SOLO</button>
+<div class="hint wide">Online: share the room code with a friend. Both players need the same Firebase project configured below. Solo works without Firebase.</div>
+<input id="apiKey" placeholder="Firebase API key" class="wide">
+<input id="dbUrl" placeholder="Firebase Database URL" class="wide">
+<input id="projectId" placeholder="Firebase Project ID" class="wide">
+<button id="saveConfig" class="wide">SAVE FIREBASE SETTINGS</button>
+<div class="hint wide" id="configHint">Firebase settings are stored only in this browser. Never use public database write rules.</div>
+</section>
+<section class="panel stats"><span>❤️ <b id="hp">100</b></span><span>☠ KILLS: <b id="kills">0</b></span><span>⏱ <b id="time">0</b>s</span><span>👥 <b id="players">1</b></span></section>
+<div id="gamewrap"><canvas id="game" width="480" height="320"></canvas><div id="overlay"><div class="modal"><h2>DEAD ZONE</h2><p id="message">Survive the infected city. Move, aim and fire.</p><button class="primary" id="start">START SURVIVING</button></div></div></div>
+<section id="controls">
+<div class="pad">
+<span></span><button data-key="up">▲</button><span></span>
+<button data-key="left">◀</button><button data-key="down">▼</button><button data-key="right">▶</button>
+</div><button id="fire">FIRE</button>
+</section>
+<div style="display:flex;justify-content:center"><button id="reload">RELOAD · R</button></div>
+<footer>WASD / Arrow keys to move · Mouse to aim · Space to fire · Mobile: D-pad + FIRE<br>Online rooms synchronize player positions. Zombie combat currently runs locally on each device.</footer>
+</main>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+(()=> {
+const $=id=>document.getElementById(id), c=$('game'),ctx=c.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+const W=480,H=320,keys={},touch={up:false,down:false,left:false,right:false,fire:false};
+let player={x:240,y:160,hp:100,angle:0},zombies=[],bullets=[],others={},kills=0,elapsed=0,playing=false,room=null,uid=null,db=null,auth=null,playerRef=null,lastShot=0,lastSync=0,ammo=12,maxAmmo=12,reloadAt=0;
+let last=performance.now(),spawn=0;
+const rand=(a,b)=>Math.random()*(b-a)+a,dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function status(s){$('status').textContent=s}
+function config(){return {apiKey:$('apiKey').value.trim(),authDomain:$('projectId').value.trim()+'.firebaseapp.com',databaseURL:$('dbUrl').value.trim(),projectId:$('projectId').value.trim()}}
+$('saveConfig').onclick=()=>{const x=config();if(!x.apiKey||!x.databaseURL||!x.projectId){$('configHint').textContent='Fill all three Firebase fields first.';return}localStorage.setItem('dzFirebase',JSON.stringify(x));$('configHint').textContent='Settings saved on this device.'};
+try{const x=JSON.parse(localStorage.getItem('dzFirebase')||'{}');$('apiKey').value=x.apiKey||'';$('dbUrl').value=x.databaseURL||'';$('projectId').value=x.projectId||''}catch(e){}
+async function connect(){const x=config();if(!x.apiKey||!x.databaseURL||!x.projectId)throw Error('Save Firebase settings first.');if(!firebase.apps.length)firebase.initializeApp(x);auth=firebase.auth();db=firebase.database();const cred=await auth.signInAnonymously();uid=cred.user.uid;return uid}
+function code(){return Math.random().toString(36).slice(2,7).toUpperCase()}
+async function enterRoom(create){try{status('CONNECTING…');await connect();let id=create?code():$('roomCode').value.trim().toUpperCase();if(!id)throw Error('Enter a room code.');room=id;const ref=db.ref('rooms/'+room+'/players');if(!create){const snap=await ref.once('value');if(!snap.exists())throw Error('Room not found. Ask host for the code.')}playerRef=ref.child(uid);await playerRef.set({name:$('playerName').value.trim()||'Survivor',x:player.x,y:player.y,hp:player.hp,updated:Date.now()});playerRef.onDisconnect().remove();ref.on('value',s=>{others={};s.forEach(ch=>{if(ch.key!==uid)others[ch.key]=ch.val()||{}});$('players').textContent=Object.keys(others).length+1});$('roomCode').value=id;$('message').textContent='Room '+id+' — share this code with your friend.';status('ONLINE · ROOM '+id);begin()}catch(e){status('CONNECTION ERROR');$('configHint').textContent=e.message;}}
+$('create').onclick=()=>enterRoom(true);$('join').onclick=()=>enterRoom(false);
+$('solo').onclick=()=>{room=null;others={};status('SOLO · OFFLINE');$('players').textContent='1';begin()};
+function begin(){player={x:240,y:160,hp:100,angle:0};zombies=[];bullets=[];kills=0;elapsed=0;ammo=maxAmmo=12;playing=true;$('overlay').classList.add('hidden');$('hp').textContent=100;$('kills').textContent=0;for(let i=0;i<6;i++)spawnZombie();last=performance.now()}
+$('start').onclick=()=>{if(!playing)begin()};
+function spawnZombie(){let side=Math.floor(rand(0,4)),z={x:side===0?0:side===1?W:rand(0,W),y:side===2?0:side===3?H:rand(0,H),hp:2,speed:rand(22,38),hit:0};zombies.push(z)}
+function shoot(){if(!playing||ammo<=0||performance.now()-lastShot<260)return;lastShot=performance.now();ammo--;bullets.push({x:player.x,y:player.y,vx:Math.cos(player.angle)*250,vy:Math.sin(player.angle)*250,life:1});}
+function reload(){if(ammo<maxAmmo&&reloadAt<performance.now()){reloadAt=performance.now()+900;setTimeout(()=>ammo=maxAmmo,900)}}
+$('fire').onpointerdown=e=>{e.preventDefault();touch.fire=true;shoot()};$('fire').onpointerup=()=>touch.fire=false;$('fire').onpointerleave=()=>touch.fire=false;
+document.querySelectorAll('[data-key]').forEach(b=>{let k=b.dataset.key;b.onpointerdown=e=>{e.preventDefault();touch[k]=true};['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>touch[k]=false))});
+document.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space'){e.preventDefault();shoot()}if(e.key.toLowerCase()==='r')reload()});
+document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+c.addEventListener('pointermove',e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W,y=(e.clientY-r.top)/r.height*H;player.angle=Math.atan2(y-player.y,x-player.x)});
+c.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')shoot()});
+function update(dt){if(!playing)return;elapsed+=dt;$('time').textContent=Math.floor(elapsed);let dx=(keys.d||keys.arrowright||touch.right?1:0)-(keys.a||keys.arrowleft||touch.left?1:0),dy=(keys.s||keys.arrowdown||touch.down?1:0)-(keys.w||keys.arrowup||touch.up?1:0),n=Math.hypot(dx,dy)||1;player.x=Math.max(12,Math.min(W-12,player.x+dx/n*105*dt));player.y=Math.max(12,Math.min(H-12,player.y+dy/n*105*dt));if(touch.fire)shoot();
+if(room&&playerRef&&performance.now()-lastSync>90){lastSync=performance.now();playerRef.update({x:Math.round(player.x),y:Math.round(player.y),hp:player.hp,updated:Date.now()}).catch(()=>status('SYNC ERROR'))}
+spawn+=dt;if(spawn>2.1&&zombies.length<18){spawn=0;spawnZombie()}
+for(const z of zombies){let a=Math.atan2(player.y-z.y,player.x-z.x);z.x+=Math.cos(a)*z.speed*dt;z.y+=Math.sin(a)*z.speed*dt;if(dist(z,player)<14){player.hp-=12*dt}}
+for(const b of bullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;for(const z of zombies){if(z.hp>0&&Math.hypot(z.x-b.x,z.y-b.y)<11){z.hp--;b.life=0;if(z.hp<=0){kills++;$('kills').textContent=kills}}}}
+bullets=bullets.filter(b=>b.life>0&&b.x>0&&b.x<W&&b.y>0&&b.y<H);zombies=zombies.filter(z=>z.hp>0);
+$('hp').textContent=Math.max(0,Math.floor(player.hp));if(player.hp<=0){playing=false;$('message').textContent='You were infected. Kills: '+kills+' · Time: '+Math.floor(elapsed)+'s';$('start').textContent='PLAY AGAIN';$('overlay').classList.remove('hidden');if(playerRef){playerRef.remove();playerRef=null}}
+}
+function pixelGuy(x,y,color,angle){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle='#111';ctx.fillRect(-7,-7,14,14);ctx.fillStyle=color;ctx.fillRect(-5,-5,10,10);ctx.fillStyle='#f4e5c8';ctx.fillRect(1,-3,3,3);ctx.fillStyle='#aeb5a5';ctx.fillRect(4,-2,9,4);ctx.restore()}
+function draw(){ctx.fillStyle='#111a17';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#1c2b25';ctx.lineWidth=1;for(let x=0;x<W;x+=16){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=16){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ctx.fillStyle='#25372d';for(let i=0;i<14;i++){let x=(i*71+33)%W,y=(i*47+17)%H;ctx.fillRect(x,y,9,9);ctx.fillStyle='#334338';ctx.fillRect(x+2,y+2,3,3);ctx.fillStyle='#25372d'}
+for(const z of zombies){ctx.fillStyle='#789d49';ctx.fillRect(z.x-7,z.y-7,14,14);ctx.fillStyle='#18261a';ctx.fillRect(z.x-4,z.y-2,2,2);ctx.fillRect(z.x+2,z.y-2,2,2);ctx.fillStyle='#d3e2a0';ctx.fillRect(z.x-2,z.y+3,5,2)}
+for(const b of bullets){ctx.fillStyle='#ffe08a';ctx.fillRect(b.x-2,b.y-2,5,5)}
+for(const p of Object.values(others)){pixelGuy(p.x||0,p.y||0,'#64c9e7',0)}
+pixelGuy(player.x,player.y,'#b7f36b',player.angle);
+ctx.fillStyle='#e7eddf';ctx.font='10px monospace';ctx.fillText('AMMO '+ammo+'/'+maxAmmo,8,14);ctx.fillText(room?'ROOM '+room:'SOLO MODE',W-105,14)}
+function loop(now){let dt=Math.min(.04,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+window.addEventListener('beforeunload',()=>{if(playerRef)playerRef.remove()});
+})();
+</script></body></html>
