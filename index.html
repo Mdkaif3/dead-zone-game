@@ -2,93 +2,105 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Dead Zone — Zombie Survival</title>
+<title>DEAD ZONE — Pixel Survival</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#090e12;color:#e8f0e8;font:15px system-ui,Arial;display:flex;justify-content:center;min-height:100vh}
-#app{width:min(100%,980px);padding:14px}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
-h1{font-size:clamp(20px,4vw,30px);margin:0;letter-spacing:2px;color:#b8ff72}small,.muted{color:#9ca9a1}
-.panel{background:#111a1d;border:1px solid #2b3a36;border-radius:14px;padding:12px;margin-bottom:10px}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input,button{font:inherit;border-radius:9px;border:1px solid #42534b;padding:10px;background:#0b1214;color:#f2f6f2}
-input{min-width:0;flex:1}button{cursor:pointer;background:#243b2a;border-color:#55764b;font-weight:700}button.secondary{background:#202a2c;border-color:#455453}button:disabled{opacity:.5}
-#gameWrap{position:relative;border:1px solid #42534b;border-radius:14px;overflow:hidden;background:#101719}
-canvas{display:block;width:100%;height:auto;touch-action:none}
-#hud{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 12px;background:#121b1d}
-#status{font-size:13px;color:#b8ff72}#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#071012d9;text-align:center;padding:20px}
-#overlay.hidden{display:none}.overlaybox{max-width:440px}.overlaybox h2{color:#b8ff72}
-.controls{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;gap:20px;user-select:none}
-.dpad{display:grid;grid-template-columns:48px 48px 48px;grid-template-rows:42px 42px 42px;gap:4px}
-.dpad button,.fire{touch-action:none;background:#273633;border-color:#52635c;font-size:19px;padding:4px}
-.dpad .up{grid-column:2}.dpad .left{grid-column:1;grid-row:2}.dpad .down{grid-column:2;grid-row:2}.dpad .right{grid-column:3;grid-row:2}
-.fire{width:92px;height:76px;border-radius:50%;background:#592b24;border-color:#a45c45}
-@media(min-width:760px){.controls{opacity:.8}.dpad button,.fire{opacity:.65}}
-footer{font-size:12px;color:#89958e;line-height:1.5;padding:8px}
+:root{--bg:#080d0d;--panel:#111b1a;--line:#344744;--lime:#b7f36b;--red:#ff665b;--muted:#a9b9b2}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#1a2925,#080d0d 65%);color:#eaf4ed;font-family:system-ui,Arial;min-height:100vh;display:flex;justify-content:center}
+#app{width:min(100%,1000px);padding:12px;display:flex;flex-direction:column;gap:10px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);background:#101918;padding:10px 14px;border-radius:14px}
+.logo{font-weight:1000;letter-spacing:2px;font-size:clamp(18px,4vw,27px)}.logo span{color:var(--lime)}.sub{font-size:11px;color:var(--muted);letter-spacing:2px}
+#status{font-size:12px;color:var(--lime);text-align:right}
+.panel{background:#101918;border:1px solid var(--line);border-radius:14px;padding:12px}
+#lobby{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+input,button{font:inherit;border-radius:10px;border:1px solid #435a53;padding:12px;background:#0a1211;color:#eff8f1;min-width:0}
+button{font-weight:800;cursor:pointer;background:#21372d}button.primary{background:#b7f36b;color:#102015;border-color:#b7f36b}button:active{transform:scale(.98)}button:disabled{opacity:.45}
+.wide{grid-column:1/-1}.hint{font-size:12px;color:var(--muted);line-height:1.5}.stats{display:flex;justify-content:space-between;gap:8px;font-weight:800}.stats b{color:var(--lime)}
+#gamewrap{position:relative;border:2px solid #3b514a;border-radius:14px;overflow:hidden;background:#101916}
+canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none}
+#overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#07100dcc;text-align:center;padding:20px}
+#overlay.hidden{display:none}.modal{max-width:360px;background:#13201c;border:1px solid #516b5c;border-radius:14px;padding:20px}.modal h2{color:var(--lime);margin:0 0 8px}
+#controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center}
+.pad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,48px);gap:5px;justify-content:center}
+.pad button{padding:0;font-size:20px;touch-action:none}
+#fire{height:96px;width:96px;border-radius:50%;justify-self:center;background:#6a3029;border:3px solid #bd6654;color:white;font-size:17px}
+#reload{background:#263b34}
+footer{font-size:11px;color:#84958d;text-align:center}
+@media(min-width:760px){#controls{max-width:500px;align-self:center;width:100%}.pad{grid-template-columns:repeat(3,62px);grid-template-rows:repeat(2,52px)}}
 </style>
 </head>
 <body><main id="app">
-<header><h1>☣ DEAD ZONE</h1><span class="muted">2D CO-OP SURVIVAL</span></header>
-<section class="panel">
- <div class="row"><input id="playerName" maxlength="14" placeholder="Your player name" value="Survivor"><input id="roomCode" maxlength="8" placeholder="Room code (e.g. NIGHT7)" style="max-width:160px"></div>
- <div class="row" style="margin-top:8px"><button id="createBtn">Create online room</button><button id="joinBtn" class="secondary">Join room</button><button id="soloBtn" class="secondary">Play solo</button></div>
- <div class="row" style="margin-top:8px"><input id="apiKey" placeholder="Firebase API key"><input id="dbUrl" placeholder="Firebase Database URL (https://...)" ></div>
- <div class="row"><input id="projectId" placeholder="Firebase project ID"><button id="saveConfig" class="secondary">Save Firebase setup</button></div>
- <small>Online mode needs your own Firebase project. Solo mode works without setup.</small>
+<header><div><div class="logo">☣ DEAD <span>ZONE</span></div><div class="sub">PIXEL SURVIVAL // BUILD 02</div></div><div id="status">OFFLINE · READY</div></header>
+<section class="panel" id="lobby">
+<input id="playerName" maxlength="14" value="Survivor" aria-label="Player name" placeholder="Player name">
+<input id="roomCode" maxlength="8" placeholder="Room code">
+<button class="primary" id="create">CREATE ONLINE ROOM</button><button id="join">JOIN ROOM</button>
+<button id="solo" class="wide">PLAY SOLO</button>
+<div class="hint wide">Online: share the room code with a friend. Both players need the same Firebase project configured below. Solo works without Firebase.</div>
+<input id="apiKey" placeholder="Firebase API key" class="wide">
+<input id="dbUrl" placeholder="Firebase Database URL" class="wide">
+<input id="projectId" placeholder="Firebase Project ID" class="wide">
+<button id="saveConfig" class="wide">SAVE FIREBASE SETTINGS</button>
+<div class="hint wide" id="configHint">Firebase settings are stored only in this browser. Never use public database write rules.</div>
 </section>
-<div id="gameWrap">
- <div id="hud"><span>❤️ <b id="hp">100</b></span><span>☠ Kills: <b id="kills">0</b></span><span>⏱ <b id="time">0</b>s</span><span id="status">Choose Solo or Online</span></div>
- <canvas id="game" width="900" height="520"></canvas>
- <div id="overlay"><div class="overlaybox"><h2>THE CITY IS LOST</h2><p>Survive the infected. Move with WASD / arrow keys, aim with mouse and click to shoot. On phones use the controls below.</p><button id="startBtn">START SURVIVING</button></div></div>
-</div>
-<div class="controls">
- <div class="dpad"><button class="up" data-key="up">▲</button><button class="left" data-key="left">◀</button><button class="down" data-key="down">▼</button><button class="right" data-key="right">▶</button></div>
- <button class="fire" id="fireBtn">FIRE</button>
-</div>
-<section class="panel"><b>Room players</b><div id="players" class="muted">No online room connected.</div></section>
-<footer>Prototype build. Online rooms sync player positions; zombies and combat scores are currently simulated separately on each device. Do not publish Firebase database rules as public read/write. Add the supplied rules before inviting players.</footer>
+<section class="panel stats"><span>❤️ <b id="hp">100</b></span><span>☠ KILLS: <b id="kills">0</b></span><span>⏱ <b id="time">0</b>s</span><span>👥 <b id="players">1</b></span></section>
+<div id="gamewrap"><canvas id="game" width="480" height="320"></canvas><div id="overlay"><div class="modal"><h2>DEAD ZONE</h2><p id="message">Survive the infected city. Move, aim and fire.</p><button class="primary" id="start">START SURVIVING</button></div></div></div>
+<section id="controls">
+<div class="pad">
+<span></span><button data-key="up">▲</button><span></span>
+<button data-key="left">◀</button><button data-key="down">▼</button><button data-key="right">▶</button>
+</div><button id="fire">FIRE</button>
+</section>
+<div style="display:flex;justify-content:center"><button id="reload">RELOAD · R</button></div>
+<footer>WASD / Arrow keys to move · Mouse to aim · Space to fire · Mobile: D-pad + FIRE<br>Online rooms synchronize player positions. Zombie combat currently runs locally on each device.</footer>
 </main>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-(() => {
-const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
-const $=id=>document.getElementById(id);
-const W=canvas.width,H=canvas.height;
-let running=false,mode='solo',uid=null,room='',db=null,playersRef=null,playerRef=null,remote={},last=0,elapsed=0,kills=0;
-let player={x:W/2,y:H/2,hp:100,speed:210,angle:0},zombies=[],bullets=[],keys={},touch={},lastShot=0;
-const rand=(a,b)=>Math.random()*(b-a)+a, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-function spawn(){let side=Math.floor(Math.random()*4);return {x:side===0?0:side===1?W:rand(0,W),y:side===2?0:side===3?H:rand(0,H),hp:2,speed:rand(34,58),r:13};}
-function start(){running=true;elapsed=0;kills=0;player={x:W/2,y:H/2,hp:100,speed:210,angle:0};zombies=[];bullets=[];for(let i=0;i<7;i++)zombies.push(spawn());$('overlay').classList.add('hidden');$('hp').textContent='100';$('kills').textContent='0';last=performance.now();requestAnimationFrame(loop)}
-function end(){running=false;$('overlay').classList.remove('hidden');$('overlay').querySelector('h2').textContent='YOU WERE OVERRUN';$('overlay').querySelector('p').textContent=`You survived ${Math.floor(elapsed)} seconds and eliminated ${kills} zombies. Start again?`;$('startBtn').textContent='TRY AGAIN'}
-function moveVector(){let x=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0)+(touch.right?1:0)-(touch.left?1:0);let y=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0)+(touch.down?1:0)-(touch.up?1:0);let l=Math.hypot(x,y)||1;return [x/l,y/l]}
-function shoot(){if(!running)return;let now=performance.now();if(now-lastShot<230)return;lastShot=now;bullets.push({x:player.x,y:player.y,vx:Math.cos(player.angle)*520,vy:Math.sin(player.angle)*520,life:1.2})}
-function loop(t){if(!running)return;let dt=Math.min((t-last)/1000,.04);last=t;elapsed+=dt;let [mx,my]=moveVector();player.x=clamp(player.x+mx*player.speed*dt,16,W-16);player.y=clamp(player.y+my*player.speed*dt,16,H-16);
-if(keys.Space||touch.fire)shoot();
-for(const z of zombies){let dx=player.x-z.x,dy=player.y-z.y,d=Math.hypot(dx,dy)||1;z.x+=dx/d*z.speed*dt;z.y+=dy/d*z.speed*dt;if(d<25){player.hp-=22*dt}}
-for(const b of bullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;for(const z of zombies){if(z.hp>0&&Math.hypot(z.x-b.x,z.y-b.y)<z.r+4){z.hp=0;b.life=0;kills++;$('kills').textContent=kills}}}
-bullets=bullets.filter(b=>b.life>0&&b.x>0&&b.x<W&&b.y>0&&b.y<H);zombies=zombies.filter(z=>z.hp>0);while(zombies.length<Math.min(18,7+Math.floor(elapsed/15)))zombies.push(spawn());
-$('hp').textContent=Math.max(0,Math.ceil(player.hp));$('time').textContent=Math.floor(elapsed);
-if(player.hp<=0){end();return}
-draw();if(mode==='online'&&playerRef&&Math.floor(t/100)%2===0)playerRef.update({name:$('playerName').value||'Survivor',x:Math.round(player.x),y:Math.round(player.y),hp:Math.ceil(player.hp),updated:firebase.database.ServerValue.TIMESTAMP}).catch(()=>{});
-requestAnimationFrame(loop)}
-function draw(){ctx.fillStyle='#111a1b';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#1b2928';ctx.lineWidth=1;for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
-for(let i=0;i<16;i++){let x=(i*173+50)%W,y=(i*97+20)%H;ctx.fillStyle='#26302b';ctx.fillRect(x,y,18,18)}
-for(const b of bullets){ctx.fillStyle='#ffe58a';ctx.beginPath();ctx.arc(b.x,b.y,4,0,7);ctx.fill()}
-for(const z of zombies){ctx.fillStyle='#85a85a';ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,7);ctx.fill();ctx.fillStyle='#172016';ctx.fillRect(z.x-6,z.y-3,3,3);ctx.fillRect(z.x+3,z.y-3,3,3)}
-for(const p of Object.values(remote)){if(!p||typeof p.x!=='number')continue;ctx.fillStyle='#65c8ff';ctx.beginPath();ctx.arc(p.x,p.y,13,0,7);ctx.fill();ctx.fillStyle='#eaf8ff';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText((p.name||'Player').slice(0,12),p.x,p.y-20)}
-ctx.save();ctx.translate(player.x,player.y);ctx.rotate(player.angle);ctx.fillStyle='#e9d5a3';ctx.fillRect(-10,-10,20,20);ctx.fillStyle='#c4f47b';ctx.fillRect(4,-4,17,8);ctx.restore()}
-canvas.addEventListener('pointermove',e=>{let r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height;player.angle=Math.atan2(y-player.y,x-player.x)});
-canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')shoot()});
-document.addEventListener('keydown',e=>{keys[e.key]=true;if(e.key===' ')e.preventDefault()});document.addEventListener('keyup',e=>keys[e.key]=false);
-document.querySelectorAll('[data-key]').forEach(b=>{let k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();touch[k]=true;b.setPointerCapture(e.pointerId)});['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,()=>touch[k]=false))});
-$('fireBtn').addEventListener('pointerdown',e=>{e.preventDefault();touch.fire=true;shoot()});['pointerup','pointercancel','pointerleave'].forEach(ev=>$('fireBtn').addEventListener(ev,()=>touch.fire=false));
-$('startBtn').onclick=()=>start();
-function cfg(){return {apiKey:$('apiKey').value.trim(),databaseURL:$('dbUrl').value.trim(),projectId:$('projectId').value.trim(),authDomain:$('projectId').value.trim()+'.firebaseapp.com'}}
-function loadCfg(){try{let c=JSON.parse(localStorage.getItem('dzFirebase')||'{}');$('apiKey').value=c.apiKey||'';$('dbUrl').value=c.databaseURL||'';$('projectId').value=c.projectId||''}catch{}}
-$('saveConfig').onclick=()=>{localStorage.setItem('dzFirebase',JSON.stringify(cfg()));$('status').textContent='Firebase settings saved on this device'};
-async function online(create){let c=cfg();if(!c.apiKey||!c.databaseURL||!c.projectId){$('status').textContent='Enter Firebase config first';return}
-try{if(!firebase.apps.length)firebase.initializeApp(c);await firebase.auth().signInAnonymously();uid=firebase.auth().currentUser.uid;db=firebase.database();room=create?Math.random().toString(36).slice(2,8).toUpperCase():$('roomCode').value.trim().toUpperCase();if(!room){$('status').textContent='Enter a room code';return}
-$('roomCode').value=room;mode='online';playersRef=db.ref('rooms/'+room+'/players');playerRef=playersRef.child(uid);await playerRef.set({name:$('playerName').value||'Survivor',x:W/2,y:H/2,hp:100,updated:firebase.database.ServerValue.TIMESTAMP});playerRef.onDisconnect().remove();playersRef.on('value',snap=>{remote=snap.val()||{};delete remote[uid];$('players').textContent=Object.values(snap.val()||{}).map(p=>(p.name||'Player')+' ('+Math.max(0,p.hp||0)+' HP)').join(' · ')||'Waiting for teammate'});$('status').textContent='ONLINE ROOM: '+room;start()}catch(e){$('status').textContent='Connection error: '+e.message;console.error(e)}}
-$('createBtn').onclick=()=>online(true);$('joinBtn').onclick=()=>online(false);$('soloBtn').onclick=()=>{mode='solo';if(playerRef)playerRef.remove();remote={};$('players').textContent='Solo mode';$('status').textContent='SOLO SURVIVAL';start()};
-loadCfg();draw();
+(()=> {
+const $=id=>document.getElementById(id), c=$('game'),ctx=c.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+const W=480,H=320,keys={},touch={up:false,down:false,left:false,right:false,fire:false};
+let player={x:240,y:160,hp:100,angle:0},zombies=[],bullets=[],others={},kills=0,elapsed=0,playing=false,room=null,uid=null,db=null,auth=null,playerRef=null,lastShot=0,lastSync=0,ammo=12,maxAmmo=12,reloadAt=0;
+let last=performance.now(),spawn=0;
+const rand=(a,b)=>Math.random()*(b-a)+a,dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function status(s){$('status').textContent=s}
+function config(){return {apiKey:$('apiKey').value.trim(),authDomain:$('projectId').value.trim()+'.firebaseapp.com',databaseURL:$('dbUrl').value.trim(),projectId:$('projectId').value.trim()}}
+$('saveConfig').onclick=()=>{const x=config();if(!x.apiKey||!x.databaseURL||!x.projectId){$('configHint').textContent='Fill all three Firebase fields first.';return}localStorage.setItem('dzFirebase',JSON.stringify(x));$('configHint').textContent='Settings saved on this device.'};
+try{const x=JSON.parse(localStorage.getItem('dzFirebase')||'{}');$('apiKey').value=x.apiKey||'';$('dbUrl').value=x.databaseURL||'';$('projectId').value=x.projectId||''}catch(e){}
+async function connect(){const x=config();if(!x.apiKey||!x.databaseURL||!x.projectId)throw Error('Save Firebase settings first.');if(!firebase.apps.length)firebase.initializeApp(x);auth=firebase.auth();db=firebase.database();const cred=await auth.signInAnonymously();uid=cred.user.uid;return uid}
+function code(){return Math.random().toString(36).slice(2,7).toUpperCase()}
+async function enterRoom(create){try{status('CONNECTING…');await connect();let id=create?code():$('roomCode').value.trim().toUpperCase();if(!id)throw Error('Enter a room code.');room=id;const ref=db.ref('rooms/'+room+'/players');if(!create){const snap=await ref.once('value');if(!snap.exists())throw Error('Room not found. Ask host for the code.')}playerRef=ref.child(uid);await playerRef.set({name:$('playerName').value.trim()||'Survivor',x:player.x,y:player.y,hp:player.hp,updated:Date.now()});playerRef.onDisconnect().remove();ref.on('value',s=>{others={};s.forEach(ch=>{if(ch.key!==uid)others[ch.key]=ch.val()||{}});$('players').textContent=Object.keys(others).length+1});$('roomCode').value=id;$('message').textContent='Room '+id+' — share this code with your friend.';status('ONLINE · ROOM '+id);begin()}catch(e){status('CONNECTION ERROR');$('configHint').textContent=e.message;}}
+$('create').onclick=()=>enterRoom(true);$('join').onclick=()=>enterRoom(false);
+$('solo').onclick=()=>{room=null;others={};status('SOLO · OFFLINE');$('players').textContent='1';begin()};
+function begin(){player={x:240,y:160,hp:100,angle:0};zombies=[];bullets=[];kills=0;elapsed=0;ammo=maxAmmo=12;playing=true;$('overlay').classList.add('hidden');$('hp').textContent=100;$('kills').textContent=0;for(let i=0;i<6;i++)spawnZombie();last=performance.now()}
+$('start').onclick=()=>{if(!playing)begin()};
+function spawnZombie(){let side=Math.floor(rand(0,4)),z={x:side===0?0:side===1?W:rand(0,W),y:side===2?0:side===3?H:rand(0,H),hp:2,speed:rand(22,38),hit:0};zombies.push(z)}
+function shoot(){if(!playing||ammo<=0||performance.now()-lastShot<260)return;lastShot=performance.now();ammo--;bullets.push({x:player.x,y:player.y,vx:Math.cos(player.angle)*250,vy:Math.sin(player.angle)*250,life:1});}
+function reload(){if(ammo<maxAmmo&&reloadAt<performance.now()){reloadAt=performance.now()+900;setTimeout(()=>ammo=maxAmmo,900)}}
+$('fire').onpointerdown=e=>{e.preventDefault();touch.fire=true;shoot()};$('fire').onpointerup=()=>touch.fire=false;$('fire').onpointerleave=()=>touch.fire=false;
+document.querySelectorAll('[data-key]').forEach(b=>{let k=b.dataset.key;b.onpointerdown=e=>{e.preventDefault();touch[k]=true};['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>touch[k]=false))});
+document.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space'){e.preventDefault();shoot()}if(e.key.toLowerCase()==='r')reload()});
+document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+c.addEventListener('pointermove',e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W,y=(e.clientY-r.top)/r.height*H;player.angle=Math.atan2(y-player.y,x-player.x)});
+c.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')shoot()});
+function update(dt){if(!playing)return;elapsed+=dt;$('time').textContent=Math.floor(elapsed);let dx=(keys.d||keys.arrowright||touch.right?1:0)-(keys.a||keys.arrowleft||touch.left?1:0),dy=(keys.s||keys.arrowdown||touch.down?1:0)-(keys.w||keys.arrowup||touch.up?1:0),n=Math.hypot(dx,dy)||1;player.x=Math.max(12,Math.min(W-12,player.x+dx/n*105*dt));player.y=Math.max(12,Math.min(H-12,player.y+dy/n*105*dt));if(touch.fire)shoot();
+if(room&&playerRef&&performance.now()-lastSync>90){lastSync=performance.now();playerRef.update({x:Math.round(player.x),y:Math.round(player.y),hp:player.hp,updated:Date.now()}).catch(()=>status('SYNC ERROR'))}
+spawn+=dt;if(spawn>2.1&&zombies.length<18){spawn=0;spawnZombie()}
+for(const z of zombies){let a=Math.atan2(player.y-z.y,player.x-z.x);z.x+=Math.cos(a)*z.speed*dt;z.y+=Math.sin(a)*z.speed*dt;if(dist(z,player)<14){player.hp-=12*dt}}
+for(const b of bullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;for(const z of zombies){if(z.hp>0&&Math.hypot(z.x-b.x,z.y-b.y)<11){z.hp--;b.life=0;if(z.hp<=0){kills++;$('kills').textContent=kills}}}}
+bullets=bullets.filter(b=>b.life>0&&b.x>0&&b.x<W&&b.y>0&&b.y<H);zombies=zombies.filter(z=>z.hp>0);
+$('hp').textContent=Math.max(0,Math.floor(player.hp));if(player.hp<=0){playing=false;$('message').textContent='You were infected. Kills: '+kills+' · Time: '+Math.floor(elapsed)+'s';$('start').textContent='PLAY AGAIN';$('overlay').classList.remove('hidden');if(playerRef){playerRef.remove();playerRef=null}}
+}
+function pixelGuy(x,y,color,angle){ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.fillStyle='#111';ctx.fillRect(-7,-7,14,14);ctx.fillStyle=color;ctx.fillRect(-5,-5,10,10);ctx.fillStyle='#f4e5c8';ctx.fillRect(1,-3,3,3);ctx.fillStyle='#aeb5a5';ctx.fillRect(4,-2,9,4);ctx.restore()}
+function draw(){ctx.fillStyle='#111a17';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#1c2b25';ctx.lineWidth=1;for(let x=0;x<W;x+=16){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=16){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ctx.fillStyle='#25372d';for(let i=0;i<14;i++){let x=(i*71+33)%W,y=(i*47+17)%H;ctx.fillRect(x,y,9,9);ctx.fillStyle='#334338';ctx.fillRect(x+2,y+2,3,3);ctx.fillStyle='#25372d'}
+for(const z of zombies){ctx.fillStyle='#789d49';ctx.fillRect(z.x-7,z.y-7,14,14);ctx.fillStyle='#18261a';ctx.fillRect(z.x-4,z.y-2,2,2);ctx.fillRect(z.x+2,z.y-2,2,2);ctx.fillStyle='#d3e2a0';ctx.fillRect(z.x-2,z.y+3,5,2)}
+for(const b of bullets){ctx.fillStyle='#ffe08a';ctx.fillRect(b.x-2,b.y-2,5,5)}
+for(const p of Object.values(others)){pixelGuy(p.x||0,p.y||0,'#64c9e7',0)}
+pixelGuy(player.x,player.y,'#b7f36b',player.angle);
+ctx.fillStyle='#e7eddf';ctx.font='10px monospace';ctx.fillText('AMMO '+ammo+'/'+maxAmmo,8,14);ctx.fillText(room?'ROOM '+room:'SOLO MODE',W-105,14)}
+function loop(now){let dt=Math.min(.04,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+window.addEventListener('beforeunload',()=>{if(playerRef)playerRef.remove()});
 })();
 </script></body></html>
